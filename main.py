@@ -14,23 +14,23 @@ from math import sqrt
 # ===================== Pygame 初始化 =====================
 pygame.init()
 canvas = pygame.display.set_mode((1000, 500))
-font_name = pygame.font.match_font('KaiTi')
+font_name: str = pygame.font.match_font('KaiTi')
 pygame.display.set_caption("厕所惊魂")
 button_rect = pygame.Rect(10, 100, 40, 20)  # 按钮的矩形区域
 button_color = (255, 255, 255)  # 按钮的颜色（RGB值）
 text_color = (0, 0, 0)  # 文本的颜色（RGB值）
-button_font = pygame.font.Font('arial.ttf', 11)  # 文本使用的字体和字号
+button_font = pygame.font.Font('assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf', 11)  # 文本使用的字体和字号
 button_text = button_font.render("Button", True, text_color)  # 渲染文本
 
 # ===================== 图像加载函数 =====================
-def loadPng(name):
-    """加载 images/ 目录下的 PNG 图片"""
-    return pygame.image.load('images/' + name + '.png')
+def load_png(name) -> pygame.Surface:
+    """加载 images/ 目录下的png图片"""
+    return pygame.image.load("assets/textures/" + name + ".png")
 
 # 预加载所需图像
-air = loadPng('air')
-p = loadPng('p')
-floor_img = loadPng('floor')   # 原变量 floor，为避免与类名冲突改为 floor_img
+air = load_png('air')
+p = load_png('p')
+floor_img = load_png('floor')   # 原变量 floor，为避免与类名冲突改为 floor_img
 
 # ===================== 读取设置文件 =====================
 with open('settings.csjh', encoding='utf-8') as f:

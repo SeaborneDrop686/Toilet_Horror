@@ -48,54 +48,54 @@ with open("settings.csjh", encoding="utf-8") as f:
 
 
 # ===================== 图像加载函数 =====================
-def loadPng(name):
+def load_png(name) -> pygame.Surface:
     """加载 images/ 目录下的png图片"""
-    return pygame.image.load("images/" + name + ".png")
+    return pygame.image.load("assets/textures/" + name + ".png")
 
 
 # 预加载所有图像资源
-air = loadPng("air")
-p = loadPng("p")
-npc = loadPng("npc")
-npc1 = loadPng("npc1")
-npc2 = loadPng("npc2")
-npc3 = loadPng("npc3")
-npc4 = loadPng("npc4")
-npc5 = loadPng("npc5")
-paper = loadPng("paper")
-paper1 = loadPng("paper1")
-paper2 = loadPng("paper2")
-paper3 = loadPng("paper3")
-paper4 = loadPng("paper4")
-paper5 = loadPng("paper5")
-floor = loadPng("floor")
-wall = loadPng("wall")
-floor1 = loadPng("floor1")
-wall1 = loadPng("wall1")
-floor2 = loadPng("floor2")
-wall2 = loadPng("wall2")
-floor3 = loadPng("floor3")
-wall3 = loadPng("wall3")
-floor4 = loadPng("floor4")
-wall4 = loadPng("wall4")
-floor5 = loadPng("floor5")
-wall5 = loadPng("wall5")
-rock = loadPng("rock")
-door = loadPng("door")
-rock1 = loadPng("rock1")
-door1 = loadPng("door1")
-rock2 = loadPng("rock2")
-door2 = loadPng("door2")
-rock3 = loadPng("rock3")
-door3 = loadPng("door3")
-rock4 = loadPng("rock4")
-door4 = loadPng("door4")
-rock5 = loadPng("rock5")
-door5 = loadPng("door5")
-f = loadPng("f")  # 用于残留影子的默认图像（看上去像地板/空）
-white = loadPng("white")
-rline = loadPng("rline")  # 红色血条线段
-bline = loadPng("bline")  # 蓝色耐力条线段
+air = load_png("air")
+p = load_png("p")
+npc = load_png("npc")
+npc1 = load_png("npc1")
+npc2 = load_png("npc2")
+npc3 = load_png("npc3")
+npc4 = load_png("npc4")
+npc5 = load_png("npc5")
+paper = load_png("paper")
+paper1 = load_png("paper1")
+paper2 = load_png("paper2")
+paper3 = load_png("paper3")
+paper4 = load_png("paper4")
+paper5 = load_png("paper5")
+floor = load_png("floor")
+wall = load_png("wall")
+floor1 = load_png("floor1")
+wall1 = load_png("wall1")
+floor2 = load_png("floor2")
+wall2 = load_png("wall2")
+floor3 = load_png("floor3")
+wall3 = load_png("wall3")
+floor4 = load_png("floor4")
+wall4 = load_png("wall4")
+floor5 = load_png("floor5")
+wall5 = load_png("wall5")
+rock = load_png("rock")
+door = load_png("door")
+rock1 = load_png("rock1")
+door1 = load_png("door1")
+rock2 = load_png("rock2")
+door2 = load_png("door2")
+rock3 = load_png("rock3")
+door3 = load_png("door3")
+rock4 = load_png("rock4")
+door4 = load_png("door4")
+rock5 = load_png("rock5")
+door5 = load_png("door5")
+f = load_png("f")  # 用于残留影子的默认图像（看上去像地板/空）
+white = load_png("white")
+rline = load_png("rline")  # 红色血条线段
+bline = load_png("bline")  # 蓝色耐力条线段
 
 
 def say(s, y):
