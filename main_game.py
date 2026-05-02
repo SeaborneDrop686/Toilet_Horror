@@ -873,8 +873,6 @@ def draw_entity(entity):  # 原 paint(i)
 player = Player()
 
 
-
-
 # ===================== 创建辅助函数 =====================
 def createWall(x, y):
     walls.append(Wall(x, y))
@@ -930,8 +928,8 @@ def setup():
         player.inventory_count = int(f.readline())
         player.health = int(f.readline())
         player.stamina = int(f.readline())
-        sprint_mode = int(f.readline())
-        slow_mode = int(f.readline())
+        sprint_mode = bool(f.readline())
+        slow_mode = bool(f.readline())
         npc_patrol_x = int(f.readline())
         npc_patrol_y = int(f.readline())
 

@@ -1,3 +1,12 @@
 [tool.black]
 # 代码格式化器配置
+
+# 如果你不想要你的一行代码被格式化, 请在这一行的最后加入 # fmt: skip
+# fmt: off
+# 如果你不想要你的段代码被格式化, 请在开始时加入 # fmt: off 结束时加入 # fmt: on
+# 请注意这两段注释的前面不能有任何除了缩进之外的内容, 就像这里演示的这样
+# fmt: on
+
+# 更多请查看 https://black.readthedocs.io/en/stable/
+
 line-length = 72
