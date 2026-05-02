@@ -125,7 +125,7 @@ while True:
                 canvas.blit(p, (500, 250))
                 pygame.display.update()
                 pygame.quit()
-                import test   # 载入主游戏模块
+                import main_game   # 载入主游戏模块
                 break
             except FileNotFoundError:
                 # 没有存档
