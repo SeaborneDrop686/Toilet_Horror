@@ -3,93 +3,129 @@ import pygame
 from math import sqrt
 
 # ===================== 全局状态变量 =====================
-skip_fall_check = 0      # 原 checking，为0时正常检查坠落（即站在非地面上会死亡）
-game_state = 1           # 原 state，1:正常运行 2:游戏结束 3:重启游戏
-seen_obstacles = []       # 原 saw，用于视野遮挡计算的障碍物列表
+skip_fall_check = 0  # 原 checking，为0时正常检查坠落（即站在非地面上会死亡）
+seen_obstacles = []  # 原 saw，用于视野遮挡计算的障碍物列表
+view_radius = 10  # 原 num
+
+NORMAL = 1
+END = 2
+RESTART = 3
+game_state = NORMAL  # 原 state，1:正常运行 2:游戏结束 3:重启游戏
+
+# NPC巡逻偏移量
+npc_patrol_x = 0  # 原 n0x
+npc_patrol_y = 0  # 原 n0y
+
+# 冲刺/潜行状态
+sprint_mode: bool = False  # 原 CTRL，1为冲刺
+slow_mode: bool = False  # 原 ALT，1为慢走/定身
+
+# 游戏对象列表（用于保存/加载）
+walls = []
+rocks = []
+floors = []
+npcs = []
+notes = []  # 原 papers
+doors = []
+linked_doors = []  # 原 ds
 
 # ===================== 初始化 Pygame =====================
 pygame.init()
 canvas = pygame.display.set_mode((1750, 750))
-font_name = pygame.font.match_font('KaiTi')
+font_name = pygame.font.match_font("KaiTi")
 bigFont = pygame.font.Font(font_name, 250)
 font = pygame.font.Font(font_name, 20)
 pygame.display.set_caption("厕所惊魂")
 
 # ===================== 读取设置文件 =====================
-with open('settings.csjh', encoding='utf-8') as f:
-    sound_enabled = int(f.readline())   # 声音开关（未使用）
-    ctrl_toggle_mode = int(f.readline()) # 原 ctrl，1表示Ctrl是切换模式，0表示按住
-    alt_toggle_mode = int(f.readline())  # 原 alt，1表示Alt是切换模式，0表示按住
+with open("settings.csjh", encoding="utf-8") as f:
+    sound_enabled = int(f.readline())  # 声音开关（未使用）
+
+    # 原 ctrl，1表示Ctrl是切换模式，0表示按住
+    ctrl_toggle_mode = int(f.readline())
+    # 原 alt，1表示Alt是切换模式，0表示按住
+    alt_toggle_mode = int(f.readline())
+
 
 # ===================== 图像加载函数 =====================
 def loadPng(name):
     """加载 images/ 目录下的png图片"""
-    return pygame.image.load('images/' + name + '.png')
+    return pygame.image.load("images/" + name + ".png")
+
 
 # 预加载所有图像资源
-air = loadPng('air')
-p = loadPng('p')
-npc = loadPng('npc')
-npc1 = loadPng('npc1')
-npc2 = loadPng('npc2')
-npc3 = loadPng('npc3')
-npc4 = loadPng('npc4')
-npc5 = loadPng('npc5')
-paper = loadPng('paper')
-paper1 = loadPng('paper1')
-paper2 = loadPng('paper2')
-paper3 = loadPng('paper3')
-paper4 = loadPng('paper4')
-paper5 = loadPng('paper5')
-floor = loadPng('floor')
-wall = loadPng('wall')
-floor1 = loadPng('floor1')
-wall1 = loadPng('wall1')
-floor2 = loadPng('floor2')
-wall2 = loadPng('wall2')
-floor3 = loadPng('floor3')
-wall3 = loadPng('wall3')
-floor4 = loadPng('floor4')
-wall4 = loadPng('wall4')
-floor5 = loadPng('floor5')
-wall5 = loadPng('wall5')
-rock = loadPng('rock')
-door = loadPng('door')
-rock1 = loadPng('rock1')
-door1 = loadPng('door1')
-rock2 = loadPng('rock2')
-door2 = loadPng('door2')
-rock3 = loadPng('rock3')
-door3 = loadPng('door3')
-rock4 = loadPng('rock4')
-door4 = loadPng('door4')
-rock5 = loadPng('rock5')
-door5 = loadPng('door5')
-f = loadPng('f')                # 用于残留影子的默认图像（看上去像地板/空）
-white = loadPng('white')
-rline = loadPng('rline')        # 红色血条线段
-bline = loadPng('bline')        # 蓝色耐力条线段
+air = loadPng("air")
+p = loadPng("p")
+npc = loadPng("npc")
+npc1 = loadPng("npc1")
+npc2 = loadPng("npc2")
+npc3 = loadPng("npc3")
+npc4 = loadPng("npc4")
+npc5 = loadPng("npc5")
+paper = loadPng("paper")
+paper1 = loadPng("paper1")
+paper2 = loadPng("paper2")
+paper3 = loadPng("paper3")
+paper4 = loadPng("paper4")
+paper5 = loadPng("paper5")
+floor = loadPng("floor")
+wall = loadPng("wall")
+floor1 = loadPng("floor1")
+wall1 = loadPng("wall1")
+floor2 = loadPng("floor2")
+wall2 = loadPng("wall2")
+floor3 = loadPng("floor3")
+wall3 = loadPng("wall3")
+floor4 = loadPng("floor4")
+wall4 = loadPng("wall4")
+floor5 = loadPng("floor5")
+wall5 = loadPng("wall5")
+rock = loadPng("rock")
+door = loadPng("door")
+rock1 = loadPng("rock1")
+door1 = loadPng("door1")
+rock2 = loadPng("rock2")
+door2 = loadPng("door2")
+rock3 = loadPng("rock3")
+door3 = loadPng("door3")
+rock4 = loadPng("rock4")
+door4 = loadPng("door4")
+rock5 = loadPng("rock5")
+door5 = loadPng("door5")
+f = loadPng("f")  # 用于残留影子的默认图像（看上去像地板/空）
+white = loadPng("white")
+rline = loadPng("rline")  # 红色血条线段
+bline = loadPng("bline")  # 蓝色耐力条线段
+
 
 def say(s, y):
     """在屏幕左侧显示对话文字"""
-    font_surface = font.render(s, True, 'black')
+    font_surface = font.render(s, True, "black")
     canvas.blit(font_surface, (100, y * 30 + 50))
 
+
 # ===================== 基础实体类（包含多级LOD绘制和视线检测） =====================
-class BaseEntity:   # 原 al
+class BaseEntity:  # 原 al
     """所有可绘制对象的基类，提供5级细节绘制和视线遮挡检测"""
+
     def paint(self, x, y):
         canvas.blit(self.img, (self.x - x + 875, self.y - y + 375))
+
     def paint1(self, x, y):
         canvas.blit(self.img1, (self.x - x + 875, self.y - y + 375))
+
     def paint2(self, x, y):
         canvas.blit(self.img2, (self.x - x + 875, self.y - y + 375))
+
     def paint3(self, x, y):
         canvas.blit(self.img3, (self.x - x + 875, self.y - y + 375))
+
     def paint4(self, x, y):
         canvas.blit(self.img4, (self.x - x + 875, self.y - y + 375))
+
     def paint5(self, x, y):
         canvas.blit(self.img5, (self.x - x + 875, self.y - y + 375))
+
     def f(self, x, y):
         """绘制残留影子（完全离开视野后的残留）"""
         canvas.blit(self.img_residual, (self.x - x + 875, self.y - y + 375))
@@ -101,53 +137,118 @@ class BaseEntity:   # 原 al
         """
         # 复杂的几何计算，判断是否有障碍物挡在玩家与实体之间
         for i in obstacles:
-            if i.x >= x and i.y <= y and self.y < i.y and self.x > i.x and \
-               i.x - x != 10 and x - i.x != 10 and i.x - x != 30 and x - i.x != 30 and \
-               self.y + 10 >= (i.y - y - 10) / (i.x - x + 10) * (self.x + 10) + y + 10 - (x + 10) * (i.y - y - 10) / (i.x - x + 10) and \
-               self.y + 10 <= (i.y + 20 - y - 10) / (i.x + 20 - x + 10) * (self.x + 10) + y + 10 - (x + 10) * (i.y + 20 - y - 10) / (i.x + 20 - x + 10):
+            if (
+                i.x >= x
+                and i.y <= y
+                and self.y < i.y
+                and self.x > i.x
+                and i.x - x != 10
+                and x - i.x != 10
+                and i.x - x != 30
+                and x - i.x != 30
+                and self.y + 10
+                >= (i.y - y - 10) / (i.x - x + 10) * (self.x + 10)
+                + y
+                + 10
+                - (x + 10) * (i.y - y - 10) / (i.x - x + 10)
+                and self.y + 10
+                <= (i.y + 20 - y - 10) / (i.x + 20 - x + 10) * (self.x + 10)
+                + y
+                + 10
+                - (x + 10) * (i.y + 20 - y - 10) / (i.x + 20 - x + 10)
+            ):
                 return 0
-            if i.x <= x and i.y >= y and self.y > i.y and self.x < i.x and \
-               i.x - x != 10 and x - i.x != 10 and i.x - x != 30 and x - i.x != 30 and \
-               self.y + 10 >= (i.y - y - 10) / (i.x - x + 10) * (self.x + 10) + y + 10 - (x + 10) * (i.y - y - 10) / (i.x - x + 10) and \
-               self.y + 10 <= (i.y + 20 - y - 10) / (i.x + 20 - x + 10) * (self.x + 10) + y + 10 - (x + 10) * (i.y + 20 - y - 10) / (i.x + 20 - x + 10):
+            if (
+                i.x <= x
+                and i.y >= y
+                and self.y > i.y
+                and self.x < i.x
+                and i.x - x != 10
+                and x - i.x != 10
+                and i.x - x != 30
+                and x - i.x != 30
+                and self.y + 10
+                >= (i.y - y - 10) / (i.x - x + 10) * (self.x + 10)
+                + y
+                + 10
+                - (x + 10) * (i.y - y - 10) / (i.x - x + 10)
+                and self.y + 10
+                <= (i.y + 20 - y - 10) / (i.x + 20 - x + 10) * (self.x + 10)
+                + y
+                + 10
+                - (x + 10) * (i.y + 20 - y - 10) / (i.x + 20 - x + 10)
+            ):
                 return 0
-            if i.x >= x and i.y >= y and self.y > i.y and self.x > i.x and \
-               i.x - x != 10 and x - i.x != 10 and i.x - x != 30 and x - i.x != 30 and \
-               self.y + 10 >= (i.y - y - 10) / (i.x + 20 - x + 10) * (self.x + 10) + y + 10 - (x + 10) * (i.y - y - 10) / (i.x + 20 - x + 10) and \
-               self.y + 10 <= (i.y + 20 - y - 10) / (i.x - x + 10) * (self.x + 10) + y + 10 - (x + 10) * (i.y + 20 - y - 10) / (i.x - x + 10):
+            if (
+                i.x >= x
+                and i.y >= y
+                and self.y > i.y
+                and self.x > i.x
+                and i.x - x != 10
+                and x - i.x != 10
+                and i.x - x != 30
+                and x - i.x != 30
+                and self.y + 10
+                >= (i.y - y - 10) / (i.x + 20 - x + 10) * (self.x + 10)
+                + y
+                + 10
+                - (x + 10) * (i.y - y - 10) / (i.x + 20 - x + 10)
+                and self.y + 10
+                <= (i.y + 20 - y - 10) / (i.x - x + 10) * (self.x + 10)
+                + y
+                + 10
+                - (x + 10) * (i.y + 20 - y - 10) / (i.x - x + 10)
+            ):
                 return 0
-            if i.x <= x and i.y <= y and self.y < i.y and self.x < i.x and \
-               i.x - x != 10 and x - i.x != 10 and i.x - x != 30 and x - i.x != 30 and \
-               self.y + 10 <= (i.y + 20 - y - 10) / (i.x - x + 10) * (self.x + 10) + y + 10 - (x + 10) * (i.y + 20 - y - 10) / (i.x - x + 10) and \
-               self.y + 10 >= (i.y - y - 10) / (i.x + 20 - x + 10) * (self.x + 10) + y + 10 - (x + 10) * (i.y - y - 10) / (i.x + 20 - x + 10):
+            if (
+                i.x <= x
+                and i.y <= y
+                and self.y < i.y
+                and self.x < i.x
+                and i.x - x != 10
+                and x - i.x != 10
+                and i.x - x != 30
+                and x - i.x != 30
+                and self.y + 10
+                <= (i.y + 20 - y - 10) / (i.x - x + 10) * (self.x + 10)
+                + y
+                + 10
+                - (x + 10) * (i.y + 20 - y - 10) / (i.x - x + 10)
+                and self.y + 10
+                >= (i.y - y - 10) / (i.x + 20 - x + 10) * (self.x + 10)
+                + y
+                + 10
+                - (x + 10) * (i.y - y - 10) / (i.x + 20 - x + 10)
+            ):
                 return 0
         return 1
 
+
 # ===================== 玩家类 =====================
-class Player:   # 原 Person
+class Player:  # 原 Person
     def __init__(self):
         self.x = 500
         self.y = 100
-        self.vel_x = 0          # 原 xs
-        self.vel_y = 0          # 原 ys
-        self.speed = 3          # 基础速度
-        self.inventory_count = 0 # 原 i，背包中物品数量
-        self.inventory = []      # 原 l，背包物品列表
-        self.health = 10000      # 原 live，生命值
-        self.stamina = 1000      # 原 strong，耐力值
+        self.vel_x = 0  # 原 xs
+        self.vel_y = 0  # 原 ys
+        self.speed = 3  # 基础速度
+        self.inventory_count = 0  # 原 i，背包中物品数量
+        self.inventory = []  # 原 l，背包物品列表
+        self.health = 10000  # 原 live，生命值
+        self.stamina = 1000  # 原 strong，耐力值
 
     def paint(self):
         """绘制玩家及状态栏"""
         canvas.blit(p, (875, 375))
-        font_surface = font.render('live', True, 'red')
+        font_surface = font.render("live", True, "red")
         canvas.blit(font_surface, (1500, 20))
-        font_surface = font.render(str(self.health), True, 'red')
+        font_surface = font.render(str(self.health), True, "red")
         canvas.blit(font_surface, (1500, 60))
         for i in range(int(self.health / 20)):
             canvas.blit(rline, (1500, 100 + i))
-        font_surface = font.render('strength', True, 'blue')
+        font_surface = font.render("strength", True, "blue")
         canvas.blit(font_surface, (1600, 20))
-        font_surface = font.render(str(self.stamina), True, 'blue')
+        font_surface = font.render(str(self.stamina), True, "blue")
         canvas.blit(font_surface, (1600, 60))
         for i in range(int(self.stamina / 2)):
             canvas.blit(bline, (1600, 100 + i))
@@ -156,14 +257,17 @@ class Player:   # 原 Person
         self.vel_x = -self.speed
         if self.speed == 7:
             self.stamina -= 3
+
     def move_right(self):
         self.vel_x = self.speed
         if self.speed == 7:
             self.stamina -= 3
+
     def move_up(self):
         self.vel_y = -self.speed
         if self.speed == 7:
             self.stamina -= 3
+
     def move_down(self):
         self.vel_y = self.speed
         if self.speed == 7:
@@ -197,33 +301,78 @@ class Player:   # 原 Person
         global game_state
         # 碰撞推开
         for i in obstacles:
-            if i.x <= self.x + 22 and i.x >= self.x - 22 and i.y <= self.y + 22 + self.speed and i.y >= self.y + 18:
+            if (
+                i.x <= self.x + 22
+                and i.x >= self.x - 22
+                and i.y <= self.y + 22 + self.speed
+                and i.y >= self.y + 18
+            ):
                 self.y = i.y - 22 - self.speed
-            if i.x <= self.x + 22 + self.speed and i.x >= self.x + 18 and i.y <= self.y + 22 and i.y >= self.y - 22:
+            if (
+                i.x <= self.x + 22 + self.speed
+                and i.x >= self.x + 18
+                and i.y <= self.y + 22
+                and i.y >= self.y - 22
+            ):
                 self.x = i.x - 22 - self.speed
-            if i.x <= self.x - 18 and i.x >= self.x - 22 - self.speed and i.y <= self.y + 22 and i.y >= self.y - 22:
+            if (
+                i.x <= self.x - 18
+                and i.x >= self.x - 22 - self.speed
+                and i.y <= self.y + 22
+                and i.y >= self.y - 22
+            ):
                 self.x = i.x + 22 + self.speed
-            if i.x <= self.x + 22 and i.x >= self.x - 22 and i.y >= self.y - 22 - self.speed and i.y <= self.y - 18:
+            if (
+                i.x <= self.x + 22
+                and i.x >= self.x - 22
+                and i.y >= self.y - 22 - self.speed
+                and i.y <= self.y - 18
+            ):
                 self.y = i.y + 22 + self.speed
         # 对打开的门也推开（门关闭时不挡路？原逻辑如此，可能是为了防止卡住）
         for i in doors:
             if i.open:
-                if i.x <= self.x + 22 and i.x >= self.x - 22 and i.y <= self.y + 22 + self.speed and i.y >= self.y + 18:
+                if (
+                    i.x <= self.x + 22
+                    and i.x >= self.x - 22
+                    and i.y <= self.y + 22 + self.speed
+                    and i.y >= self.y + 18
+                ):
                     self.y = i.y - 22 - self.speed
-                if i.x <= self.x + 22 + self.speed and i.x >= self.x + 18 and i.y <= self.y + 22 and i.y >= self.y - 22:
+                if (
+                    i.x <= self.x + 22 + self.speed
+                    and i.x >= self.x + 18
+                    and i.y <= self.y + 22
+                    and i.y >= self.y - 22
+                ):
                     self.x = i.x - 22 - self.speed
-                if i.x <= self.x - 18 and i.x >= self.x - 22 - self.speed and i.y <= self.y + 22 and i.y >= self.y - 22:
+                if (
+                    i.x <= self.x - 18
+                    and i.x >= self.x - 22 - self.speed
+                    and i.y <= self.y + 22
+                    and i.y >= self.y - 22
+                ):
                     self.x = i.x + 22 + self.speed
-                if i.x <= self.x + 22 and i.x >= self.x - 22 and i.y >= self.y - 22 - self.speed and i.y <= self.y - 18:
+                if (
+                    i.x <= self.x + 22
+                    and i.x >= self.x - 22
+                    and i.y >= self.y - 22 - self.speed
+                    and i.y <= self.y - 18
+                ):
                     self.y = i.y + 22 + self.speed
         # 检查是否站在地面上
         on_floor = False
         for fl in floors:
-            if fl.x <= self.x + 20 and fl.x >= self.x - 20 and fl.y <= self.y + 20 and fl.y >= self.y - 20:
+            if (
+                fl.x <= self.x + 20
+                and fl.x >= self.x - 20
+                and fl.y <= self.y + 20
+                and fl.y >= self.y - 20
+            ):
                 on_floor = True
                 break
         if not on_floor and not skip_fall_check:
-            game_state = 2   # 坠落死亡
+            game_state = 2  # 坠落死亡
 
         # 属性上限与下限
         if self.stamina > 1000:
@@ -237,17 +386,33 @@ class Player:   # 原 Person
         if self.health == 0:
             game_state = 2
 
+
 # ===================== NPC 类 =====================
 class NPC(BaseEntity):
-    def __init__(self, x, y, dialogue1, dialogue2='', dialogue3='', dialogue4='', dialogue5=''):
+    def __init__(
+        self,
+        x,
+        y,
+        dialogue1,
+        dialogue2="",
+        dialogue3="",
+        dialogue4="",
+        dialogue5="",
+    ):
         self.x = x
         self.y = y
-        self.saved_x = x        # 记录初始位置（用于残留影子绘制）
+        self.saved_x = x  # 记录初始位置（用于残留影子绘制）
         self.saved_y = y
-        self.linger_far = 0     # 原 view，远端残留计时器
-        self.linger_mid = 0     # 原 fview，中距离残留计时器
-        self.linger_close = 0   # 原 nview，近距离残留计时器
-        self.dialogue = (dialogue1, dialogue2, dialogue3, dialogue4, dialogue5)  # 对话内容
+        self.linger_far = 0  # 原 view，远端残留计时器
+        self.linger_mid = 0  # 原 fview，中距离残留计时器
+        self.linger_close = 0  # 原 nview，近距离残留计时器
+        self.dialogue = (
+            dialogue1,
+            dialogue2,
+            dialogue3,
+            dialogue4,
+            dialogue5,
+        )  # 对话内容
         # 图像
         self.img = npc
         self.img1 = npc1
@@ -261,31 +426,46 @@ class NPC(BaseEntity):
         canvas.blit(self.img, (self.x - x + 875, self.y - y + 375))
         self.saved_x = self.x
         self.saved_y = self.y
+
     def paint1(self, x, y):
         canvas.blit(self.img1, (self.x - x + 875, self.y - y + 375))
         self.saved_x = self.x
         self.saved_y = self.y
+
     def paint2(self, x, y):
         canvas.blit(self.img2, (self.x - x + 875, self.y - y + 375))
         self.saved_x = self.x
         self.saved_y = self.y
+
     def paint3(self, x, y):
         canvas.blit(self.img3, (self.x - x + 875, self.y - y + 375))
         self.saved_x = self.x
         self.saved_y = self.y
+
     def paint4(self, x, y):
-        canvas.blit(self.img4, (self.saved_x - x + 875, self.saved_y - y + 375))
+        canvas.blit(
+            self.img4, (self.saved_x - x + 875, self.saved_y - y + 375)
+        )
+
     def paint5(self, x, y):
-        canvas.blit(self.img5, (self.saved_x - x + 875, self.saved_y - y + 375))
+        canvas.blit(
+            self.img5, (self.saved_x - x + 875, self.saved_y - y + 375)
+        )
+
     def f(self, x, y):
-        canvas.blit(self.img_residual, (self.saved_x - x + 875, self.saved_y - y + 375))
+        canvas.blit(
+            self.img_residual, (self.saved_x - x + 875, self.saved_y - y + 375)
+        )
 
     def move_left(self, n):
         self.x -= n
+
     def move_right(self, n):
         self.x += n
+
     def move_up(self, n):
         self.y -= n
+
     def move_down(self, n):
         self.y += n
 
@@ -293,7 +473,7 @@ class NPC(BaseEntity):
         """检查玩家是否在附近并按F键对话"""
         global player
         if sqrt((self.x - px) ** 2 + (self.y - py) ** 2) < 100:
-            font_surface = font.render('F', True, 'black')
+            font_surface = font.render("F", True, "black")
             canvas.blit(font_surface, (self.x - px + 880, self.y - py + 375))
             keys = pygame.key.get_pressed()
             if keys[pygame.K_f]:
@@ -309,7 +489,7 @@ class NPC(BaseEntity):
                 say(self.dialogue[2], 2)
                 say(self.dialogue[3], 3)
                 say(self.dialogue[4], 4)
-                font_surface = font.render('X', True, 'red')
+                font_surface = font.render("X", True, "red")
                 canvas.blit(font_surface, (1510, 160))
                 pygame.display.update()
                 while True:
@@ -327,17 +507,31 @@ class NPC(BaseEntity):
                                 break
                         break
 
+
 # ===================== 可拾取物品（纸条）类 =====================
-class Note(BaseEntity):   # 原 Paper
-    def __init__(self, x, y, text1, text2='', text3='', text4='', text5='', pickup_key=pygame.K_f, inventory_slot=0):
+class Note(BaseEntity):  # 原 Paper
+    def __init__(
+        self,
+        x,
+        y,
+        text1,
+        text2="",
+        text3="",
+        text4="",
+        text5="",
+        pickup_key=pygame.K_f,
+        inventory_slot=0,
+    ):
         self.x = x
         self.y = y
         self.linger_far = 0
         self.linger_mid = 0
         self.linger_close = 0
-        self.text = (text1, text2, text3, text4, text5)   # 纸条内容
-        self.pickup_key = pickup_key       # 原 k，拾取按键
-        self.inventory_slot = inventory_slot  # 原 fn，0表示在地上，>0表示在背包中的序号
+        self.text = (text1, text2, text3, text4, text5)  # 纸条内容
+        self.pickup_key = pickup_key  # 原 k，拾取按键
+        self.inventory_slot = (
+            inventory_slot  # 原 fn，0表示在地上，>0表示在背包中的序号
+        )
         # 图像
         self.img = paper
         self.img1 = paper1
@@ -352,31 +546,37 @@ class Note(BaseEntity):   # 原 Paper
             canvas.blit(paper, (self.x - x + 875, self.y - y + 375))
         else:
             canvas.blit(paper, (self.inventory_slot * 30 + 1250, 50))
+
     def paint1(self, x, y):
         if not self.inventory_slot:
             canvas.blit(paper1, (self.x - x + 875, self.y - y + 375))
         else:
             canvas.blit(paper, (self.inventory_slot * 30 + 1250, 50))
+
     def paint2(self, x, y):
         if not self.inventory_slot:
             canvas.blit(paper2, (self.x - x + 875, self.y - y + 375))
         else:
             canvas.blit(paper, (self.inventory_slot * 30 + 1250, 50))
+
     def paint3(self, x, y):
         if not self.inventory_slot:
             canvas.blit(paper3, (self.x - x + 875, self.y - y + 375))
         else:
             canvas.blit(paper, (self.inventory_slot * 30 + 1250, 50))
+
     def paint4(self, x, y):
         if not self.inventory_slot:
             canvas.blit(paper4, (self.x - x + 875, self.y - y + 375))
         else:
             canvas.blit(paper, (self.inventory_slot * 30 + 1250, 50))
+
     def paint5(self, x, y):
         if not self.inventory_slot:
             canvas.blit(paper5, (self.x - x + 875, self.y - y + 375))
         else:
             canvas.blit(paper, (self.inventory_slot * 30 + 1250, 50))
+
     def f(self, x, y):
         if not self.inventory_slot:
             canvas.blit(p, (self.x - x + 875, self.y - y + 375))
@@ -390,13 +590,15 @@ class Note(BaseEntity):   # 原 Paper
         if not self.inventory_slot:
             # 在地上的纸条
             if sqrt((self.x - px) ** 2 + (self.y - py) ** 2) < 100:
-                font_surface = font.render('F', True, 'white')
-                canvas.blit(font_surface, (self.x - px + 880, self.y - py + 375))
+                font_surface = font.render("F", True, "white")
+                canvas.blit(
+                    font_surface, (self.x - px + 880, self.y - py + 375)
+                )
             else:
                 return
         else:
             # 在背包中，显示序号
-            font_surface = font.render(str(self.inventory_slot), True, 'white')
+            font_surface = font.render(str(self.inventory_slot), True, "white")
             canvas.blit(font_surface, (self.inventory_slot * 30 + 1255, 50))
 
         keys = pygame.key.get_pressed()
@@ -413,9 +615,9 @@ class Note(BaseEntity):   # 原 Paper
             say(self.text[2], 2)
             say(self.text[3], 3)
             say(self.text[4], 4)
-            font_surface = font.render('Q:丢弃', True, 'red')
+            font_surface = font.render("Q:丢弃", True, "red")
             canvas.blit(font_surface, (1500, 150))
-            font_surface = font.render('X:留下', True, 'red')
+            font_surface = font.render("X:留下", True, "red")
             canvas.blit(font_surface, (1500, 175))
             pygame.display.update()
             while True:
@@ -432,7 +634,9 @@ class Note(BaseEntity):   # 原 Paper
                             self.inventory_slot = player.inventory_count + 1
                             player.inventory_count += 1
                             player.inventory.append(self)
-                            self.pickup_key = 48 + self.inventory_slot  # 数字键
+                            self.pickup_key = (
+                                48 + self.inventory_slot
+                            )  # 数字键
                         while keys[pygame.K_x]:
                             event = pygame.event.poll()
                             keys = pygame.key.get_pressed()
@@ -440,7 +644,9 @@ class Note(BaseEntity):   # 原 Paper
                                 break
                         break
                     else:
-                        font_surface = font.render('无法拾起，请检查背包', True, 'red')
+                        font_surface = font.render(
+                            "无法拾起，请检查背包", True, "red"
+                        )
                         canvas.blit(font_surface, (1500, 200))
                         pygame.display.update()
                 if keys[pygame.K_q]:
@@ -459,13 +665,14 @@ class Note(BaseEntity):   # 原 Paper
                             break
                     break
 
+
 # ===================== 门（传送门）类 =====================
 class Door(BaseEntity):
     def __init__(self, x, y, dest_x, dest_y, linked_door):
         self.x = x
         self.y = y
-        self.dest_x = dest_x       # 原 xn
-        self.dest_y = dest_y       # 原 yn
+        self.dest_x = dest_x  # 原 xn
+        self.dest_y = dest_y  # 原 yn
         self.linger_far = 0
         self.linger_mid = 0
         self.linger_close = 0
@@ -482,21 +689,27 @@ class Door(BaseEntity):
     def paint(self, x, y):
         if self.open:
             canvas.blit(door, (self.x - x + 875, self.y - y + 375))
+
     def paint1(self, x, y):
         if self.open:
             canvas.blit(door1, (self.x - x + 875, self.y - y + 375))
+
     def paint2(self, x, y):
         if self.open:
             canvas.blit(door2, (self.x - x + 875, self.y - y + 375))
+
     def paint3(self, x, y):
         if self.open:
             canvas.blit(door3, (self.x - x + 875, self.y - y + 375))
+
     def paint4(self, x, y):
         if self.open:
             canvas.blit(door4, (self.x - x + 875, self.y - y + 375))
+
     def paint5(self, x, y):
         if self.open:
             canvas.blit(door5, (self.x - x + 875, self.y - y + 375))
+
     def f(self, x, y):
         canvas.blit(f, (self.x - x + 875, self.y - y + 375))
 
@@ -504,7 +717,7 @@ class Door(BaseEntity):
         """开关门"""
         global player
         if sqrt((self.x - px) ** 2 + (self.y - py) ** 2) < 75:
-            font_surface = font.render('F', True, 'white')
+            font_surface = font.render("F", True, "white")
             canvas.blit(font_surface, (self.x - px + 880, self.y - py + 375))
             keys = pygame.key.get_pressed()
             if keys[pygame.K_f]:
@@ -516,8 +729,9 @@ class Door(BaseEntity):
                 self.open = not self.open
                 self.linked_door.open = not self.linked_door.open
 
+
 # ===================== 门的另一端（连接门）类 =====================
-class LinkedDoor(BaseEntity):   # 原 D
+class LinkedDoor(BaseEntity):  # 原 D
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -536,23 +750,30 @@ class LinkedDoor(BaseEntity):   # 原 D
     def paint(self, x, y):
         if self.open:
             canvas.blit(door, (self.x - x + 875, self.y - y + 375))
+
     def paint1(self, x, y):
         if self.open:
             canvas.blit(door1, (self.x - x + 875, self.y - y + 375))
+
     def paint2(self, x, y):
         if self.open:
             canvas.blit(door2, (self.x - x + 875, self.y - y + 375))
+
     def paint3(self, x, y):
         if self.open:
             canvas.blit(door3, (self.x - x + 875, self.y - y + 375))
+
     def paint4(self, x, y):
         if self.open:
             canvas.blit(door4, (self.x - x + 875, self.y - y + 375))
+
     def paint5(self, x, y):
         if self.open:
             canvas.blit(door5, (self.x - x + 875, self.y - y + 375))
+
     def f(self, x, y):
         canvas.blit(f, (self.x - x + 875, self.y - y + 375))
+
 
 # ===================== 地板、墙壁、岩石类（只用于绘制和碰撞） =====================
 class Floor(BaseEntity):
@@ -570,6 +791,7 @@ class Floor(BaseEntity):
         self.img5 = floor5
         self.img_residual = f
 
+
 class Wall(BaseEntity):
     def __init__(self, x, y):
         self.x = x
@@ -584,6 +806,7 @@ class Wall(BaseEntity):
         self.img4 = wall4
         self.img5 = wall5
         self.img_residual = f
+
 
 class Rock(BaseEntity):
     def __init__(self, x, y):
@@ -600,11 +823,9 @@ class Rock(BaseEntity):
         self.img5 = rock5
         self.img_residual = f
 
-# ===================== 全局视野半径 =====================
-view_radius = 10   # 原 num
 
 # ===================== 绘制函数 =====================
-def draw_entity(entity):   # 原 paint(i)
+def draw_entity(entity):  # 原 paint(i)
     """根据实体与玩家的距离，选择不同细节等级绘制，并管理残留影子"""
     dist = sqrt((entity.x - player.x) ** 2 + (entity.y - player.y) ** 2)
     if dist < view_radius and entity.seen(player.x, player.y, seen_obstacles):
@@ -647,43 +868,43 @@ def draw_entity(entity):   # 原 paint(i)
             entity.f(player.x, player.y)
             entity.linger_far -= 1
 
+
 # ===================== 玩家实例 =====================
 player = Player()
 
-# ===================== 游戏对象列表（用于保存/加载） =====================
-walls = []
-rocks = []
-floors = []
-npcs = []
-notes = []        # 原 papers
-doors = []
-linked_doors = []  # 原 ds
+
+
 
 # ===================== 创建辅助函数 =====================
 def createWall(x, y):
     walls.append(Wall(x, y))
+
+
 def createRock(x, y):
     rocks.append(Rock(x, y))
+
+
 def createFloor(x, y):
     floors.append(Floor(x, y))
-def createNPC(x, y, s, s1='', s2='', s3='', s4=''):
+
+
+def createNPC(x, y, s, s1="", s2="", s3="", s4=""):
     npcs.append(NPC(x, y, s, s1, s2, s3, s4))
-def createPaper(x, y, s, s1='', s2='', s3='', s4='', k=pygame.K_f, fn=0):
+
+
+def createPaper(x, y, s, s1="", s2="", s3="", s4="", k=pygame.K_f, fn=0):
     notes.append(Note(x, y, s, s1, s2, s3, s4, k, fn))
+
+
 def createDoor(x, y, xn, yn, linked):
     doors.append(Door(x, y, xn, yn, linked))
+
+
 def createLinkedDoor(x, y):
     """创建一个连接门并返回其对象，用于与Door配对"""
     linked_doors.append(LinkedDoor(x, y))
     return linked_doors[-1]
 
-# ===================== NPC巡逻偏移量 =====================
-npc_patrol_x = 0   # 原 n0x
-npc_patrol_y = 0   # 原 n0y
-
-# ===================== 冲刺/潜行状态 =====================
-sprint_mode = 0    # 原 CTRL，1为冲刺
-slow_mode = 0      # 原 ALT，1为慢走/定身
 
 # ===================== 存档加载函数 =====================
 def setup():
@@ -697,7 +918,7 @@ def setup():
     notes = []
     doors = []
     linked_doors = []
-    with open('savings.csjh', encoding='utf-8') as f:
+    with open("savings.csjh", encoding="utf-8") as f:
         view_radius = int(f.readline())
         skip_fall_check = int(f.readline())
         game_state = int(f.readline())
@@ -767,53 +988,54 @@ def setup():
             ld = createLinkedDoor(int(xd_list[i]), int(yd_list[i]))
             createDoor(int(x_list[i]), int(y_list[i]), dx, dy, ld)
 
+
 def save():
     """将游戏状态保存到savings.csjh"""
-    with open('savings.csjh', 'w', encoding='utf-8') as f:
-        f.write(str(int(view_radius)) + '\n')
-        f.write(str(int(skip_fall_check)) + '\n')
-        f.write(str(int(game_state)) + '\n')
-        f.write(str(int(player.x)) + '\n')
-        f.write(str(int(player.y)) + '\n')
-        f.write(str(int(player.vel_x)) + '\n')
-        f.write(str(int(player.vel_y)) + '\n')
-        f.write(str(int(player.speed)) + '\n')
-        f.write(str(int(player.inventory_count)) + '\n')
-        f.write(str(int(player.health)) + '\n')
-        f.write(str(int(player.stamina)) + '\n')
-        f.write(str(int(sprint_mode)) + '\n')
-        f.write(str(int(slow_mode)) + '\n')
-        f.write(str(int(npc_patrol_x)) + '\n')
-        f.write(str(int(npc_patrol_y)) + '\n')
+    with open("savings.csjh", "w", encoding="utf-8") as f:
+        f.write(str(int(view_radius)) + "\n")
+        f.write(str(int(skip_fall_check)) + "\n")
+        f.write(str(int(game_state)) + "\n")
+        f.write(str(int(player.x)) + "\n")
+        f.write(str(int(player.y)) + "\n")
+        f.write(str(int(player.vel_x)) + "\n")
+        f.write(str(int(player.vel_y)) + "\n")
+        f.write(str(int(player.speed)) + "\n")
+        f.write(str(int(player.inventory_count)) + "\n")
+        f.write(str(int(player.health)) + "\n")
+        f.write(str(int(player.stamina)) + "\n")
+        f.write(str(int(sprint_mode)) + "\n")
+        f.write(str(int(slow_mode)) + "\n")
+        f.write(str(int(npc_patrol_x)) + "\n")
+        f.write(str(int(npc_patrol_y)) + "\n")
 
         # 地板坐标
         for fl in floors:
-            f.write(str(fl.x) + ' ')
-        f.write('\n')
+            f.write(str(fl.x) + " ")
+        f.write("\n")
         for fl in floors:
-            f.write(str(fl.y) + ' ')
-        f.write('\n')
+            f.write(str(fl.y) + " ")
+        f.write("\n")
         # 墙壁坐标
         for w in walls:
-            f.write(str(w.x) + ' ')
-        f.write('\n')
+            f.write(str(w.x) + " ")
+        f.write("\n")
         for w in walls:
-            f.write(str(w.y) + ' ')
-        f.write('\n')
+            f.write(str(w.y) + " ")
+        f.write("\n")
         # 岩石坐标
         for r in rocks:
-            f.write(str(r.x) + ' ')
-        f.write('\n')
+            f.write(str(r.x) + " ")
+        f.write("\n")
         for r in rocks:
-            f.write(str(r.y) + ' ')
-        f.write('\n')
+            f.write(str(r.y) + " ")
+        f.write("\n")
         # NPC坐标及对话
         for n in npcs:
-            f.write(str(int(n.x)) + ' ')
-        f.write('\n')
+            f.write(str(int(n.x)) + " ")
+        f.write("\n")
         for n in npcs:
-            f.write(str(int(n.y)) + ' ')
-        f.write('\n')
+            f.write(str(int(n.y)) + " ")
+        f.write("\n")
         for n in npcs:
             f.write(str(n.dialogue[0]))
             f.write(str(n.dialogue[1]))
@@ -822,21 +1044,21 @@ def save():
             f.write(str(n.dialogue[4]))
         # 纸条坐标及背包状态
         for nt in notes:
-            f.write(str(int(nt.x)) + ' ')
-        f.write('\n')
+            f.write(str(int(nt.x)) + " ")
+        f.write("\n")
         for nt in notes:
-            f.write(str(int(nt.y)) + ' ')
-        f.write('\n')
+            f.write(str(int(nt.y)) + " ")
+        f.write("\n")
         for nt in notes:
             written = False
             for idx, item in enumerate(player.inventory):
                 if item == nt:
-                    f.write(str(idx) + ' ')
+                    f.write(str(idx) + " ")
                     written = True
                     break
             if not written:
-                f.write('-1 ')
-        f.write('\n')
+                f.write("-1 ")
+        f.write("\n")
         for nt in notes:
             f.write(str(nt.text[0]))
             f.write(str(nt.text[1]))
@@ -845,24 +1067,25 @@ def save():
             f.write(str(nt.text[4]))
             f.write(str(int(nt.pickup_key)))
             f.write(str(nt.inventory_slot))
-        f.write('\n')
+        f.write("\n")
         # 门坐标及配对
         for dr in doors:
-            f.write(str(int(dr.x)) + ' ')
-        f.write('\n')
+            f.write(str(int(dr.x)) + " ")
+        f.write("\n")
         for dr in doors:
-            f.write(str(int(dr.y)) + ' ')
-        f.write('\n')
+            f.write(str(int(dr.y)) + " ")
+        f.write("\n")
         for dr in doors:
-            f.write(str(int(dr.linked_door.x)) + ' ')
-        f.write('\n')
+            f.write(str(int(dr.linked_door.x)) + " ")
+        f.write("\n")
         for dr in doors:
-            f.write(str(int(dr.linked_door.y)) + ' ')
-        f.write('\n')
+            f.write(str(int(dr.linked_door.y)) + " ")
+        f.write("\n")
         for dr in doors:
             f.write(str(dr.dest_x))
             f.write(str(dr.dest_y))
-        f.write('\n')
+        f.write("\n")
+
 
 # ===================== 初始加载存档 =====================
 setup()
@@ -876,7 +1099,7 @@ while True:
         pygame.quit()
         break
 
-    if game_state == 1:   # 正常游戏
+    if game_state == 1:  # 正常游戏
         # 视野逐渐扩大
         if view_radius < 300:
             view_radius += view_radius / 50
@@ -912,7 +1135,7 @@ while True:
                     pygame.quit()
                     break
                 keys = pygame.key.get_pressed()
-                if keys[pygame.K_s]:   # 保存
+                if keys[pygame.K_s]:  # 保存
                     while keys[pygame.K_s]:
                         event = pygame.event.poll()
                         keys = pygame.key.get_pressed()
@@ -928,7 +1151,7 @@ while True:
                             if j % 15 == 0:
                                 pygame.display.update()
                     break
-                if keys[pygame.K_c]:   # 退出游戏
+                if keys[pygame.K_c]:  # 退出游戏
                     while keys[pygame.K_c]:
                         event = pygame.event.poll()
                         keys = pygame.key.get_pressed()
@@ -955,11 +1178,17 @@ while True:
                 for i in range(40):
                     for j in range(150):
                         canvas.blit(floor, (j * 20, i * 20))
-                font_surface = pygame.font.Font(font_name, 50).render('S:保存游戏', True, (255, 0, 0))
+                font_surface = pygame.font.Font(font_name, 50).render(
+                    "S:保存游戏", True, (255, 0, 0)
+                )
                 canvas.blit(font_surface, (10, 7))
-                font_surface = pygame.font.Font(font_name, 50).render('C:退出游戏', True, (255, 0, 0))
+                font_surface = pygame.font.Font(font_name, 50).render(
+                    "C:退出游戏", True, (255, 0, 0)
+                )
                 canvas.blit(font_surface, (10, 70))
-                font_surface = pygame.font.Font(font_name, 50).render('X', True, (255, 0, 0))
+                font_surface = pygame.font.Font(font_name, 50).render(
+                    "X", True, (255, 0, 0)
+                )
                 canvas.blit(font_surface, (1700, 700))
                 pygame.display.update()
 
@@ -969,7 +1198,7 @@ while True:
         else:
             player.speed = 4
         if keys[pygame.K_LCTRL] or keys[pygame.K_RCTRL]:
-            if ctrl_toggle_mode:   # 切换模式
+            if ctrl_toggle_mode:  # 切换模式
                 while keys[pygame.K_LCTRL] or keys[pygame.K_RCTRL]:
                     event = pygame.event.poll()
                     keys = pygame.key.get_pressed()
@@ -1009,7 +1238,7 @@ while True:
         if keys[pygame.K_s] or keys[pygame.K_DOWN]:
             player.move_down()
         if keys[pygame.K_r]:
-            game_state = 3   # 重启
+            game_state = 3  # 重启
 
         # 绘制所有物体
         for fl in floors:
@@ -1017,15 +1246,24 @@ while True:
         seen_obstacles = []
         for rk in rocks:
             draw_entity(rk)
-            if sqrt((rk.x - player.x) ** 2 + (rk.y - player.y) ** 2) < view_radius and rk.seen(player.x, player.y, seen_obstacles):
+            if sqrt(
+                (rk.x - player.x) ** 2 + (rk.y - player.y) ** 2
+            ) < view_radius and rk.seen(player.x, player.y, seen_obstacles):
                 seen_obstacles.append(rk)
         for wl in walls:
             draw_entity(wl)
-            if sqrt((wl.x - player.x) ** 2 + (wl.y - player.y) ** 2) < view_radius and wl.seen(player.x, player.y, seen_obstacles):
+            if sqrt(
+                (wl.x - player.x) ** 2 + (wl.y - player.y) ** 2
+            ) < view_radius and wl.seen(player.x, player.y, seen_obstacles):
                 seen_obstacles.append(wl)
         for dr in doors + linked_doors:
             draw_entity(dr)
-            if dr.open and sqrt((dr.x - player.x) ** 2 + (dr.y - player.y) ** 2) < view_radius and dr.seen(player.x, player.y, seen_obstacles):
+            if (
+                dr.open
+                and sqrt((dr.x - player.x) ** 2 + (dr.y - player.y) ** 2)
+                < view_radius
+                and dr.seen(player.x, player.y, seen_obstacles)
+            ):
                 seen_obstacles.append(dr)
         for nt in notes:
             draw_entity(nt)
@@ -1042,7 +1280,9 @@ while True:
         player.paint()
 
         # 显示坐标
-        font_surface = font.render('X:' + str(player.x) + ',Y=' + str(player.y), True, 'red')
+        font_surface = font.render(
+            "X:" + str(player.x) + ",Y=" + str(player.y), True, "red"
+        )
         canvas.blit(font_surface, (20, 20))
 
         # 交互检查
@@ -1055,12 +1295,12 @@ while True:
 
         pygame.display.update()
 
-    elif game_state == 2:   # 游戏结束
-        font_surface = bigFont.render('Game over', True, 'red')
+    elif game_state == 2:  # 游戏结束
+        font_surface = bigFont.render("Game over", True, "red")
         canvas.blit(font_surface, (250, 30))
-        font_surface = font.render('\'c\' for exit', True, 'red')
+        font_surface = font.render("'c' for exit", True, "red")
         canvas.blit(font_surface, (800, 450))
-        font_surface = font.render('\'r\' for again', True, 'red')
+        font_surface = font.render("'r' for again", True, "red")
         canvas.blit(font_surface, (800, 550))
         pygame.display.update()
         event = pygame.event.poll()
@@ -1074,7 +1314,7 @@ while True:
             pygame.quit()
             break
 
-    elif game_state == 3:   # 重启游戏
+    elif game_state == 3:  # 重启游戏
         player = Player()
         game_state = 1
         view_radius = 0
